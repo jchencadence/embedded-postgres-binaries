@@ -1,35 +1,91 @@
 name: Build and Release PostgreSQL with PostGIS and pgRouting
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 on:
   push:
     branches:
-      - master
+      - release
   workflow_dispatch:
 
 jobs:
   build-and-release:
-    runs-on: macos-latest
     strategy:
       matrix:
-        # pg_version: ["13.14", "14.11", "15.6", "16.2"]
-        pg_version: ["13.14"]
+        pg_version: ["13.15", "14.12", "15.7", "16.3"]
+        os: [macos-15-large, macos-15-xlarge]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: scripts
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+      
+      - name: Decode and import the certificate
+        run: |
+          # Decode the base64-encoded certificate and save it as a .p12 file
+          echo "${{ secrets.CERTIFICATE_P12_BASE64 }}" | base64 --decode > certificate.p12
+          
+          # Import the .p12 certificate into the macOS keychain
+          security create-keychain -p "temp-password" build.keychain
+          security import certificate.p12 -k build.keychain -P "${{ secrets.CERTIFICATE_PASSWORD }}" -T /usr/bin/codesign
+          
+          # Set the keychain as default and unlock it
+          security list-keychains -s build.keychain
+          security unlock-keychain -p "temp-password" build.keychain
+          
+          # Set keychain settings to prevent it from locking automatically
+          security set-keychain-settings build.keychain
+          
+          # Pre-authorize codesign to access the certificate
+          security set-key-partition-list -S apple-tool:,apple: -s -k "temp-password" build.keychain
+
+          echo "SIGN_IDENTITY=${{ secrets.SIGN_IDENTITY }}" >> $GITHUB_ENV
+          echo "APPLE_ID=${{ secrets.APPLE_ID }}" >> $GITHUB_ENV
+          echo "APPLE_APP_SPECIFIC_PASSWORD=${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}" >> $GITHUB_ENV
+          echo "APPLE_TEAM_ID=${{ secrets.APPLE_TEAM_ID }}" >> $GITHUB_ENV
 
       - name: Build PostgreSQL, PostGIS, and Dependencies
+        id: build_postgres
         run: |
-          ./build_postgres.sh -v ${{ matrix.pg_version }} -p darwin -a arm64v8 -g 3.1.4 -r 3.2.0
+          ./build-postgres-darwin.sh -v ${{ matrix.pg_version }} -g 3.4.2 -r 3.6.2
+          if [ "${{ matrix.os }}" == "macos-15-xlarge" ]; then
+            echo "ARCH=arm64" >> $GITHUB_OUTPUT
+            echo "FILENAME=postgresql-${{ matrix.pg_version }}-darwin-arm64.zip" >> $GITHUB_OUTPUT
+          else
+            echo "ARCH=amd64" >> $GITHUB_OUTPUT
+            echo "FILENAME=postgresql-${{ matrix.pg_version }}-darwin-amd64.zip" >> $GITHUB_OUTPUT
+          fi
 
       - name: Prepare Release Assets
         run: |
           mkdir -p release
-          cp bundle/postgres-macos.txz "release/postgresql-${{ matrix.pg_version }}-macos.txz"
+          cp bundle/postgres-macos.zip "release/${{ steps.build_postgres.outputs.FILENAME }}"
 
       - name: Calculate SHA256 Checksums
+        id: calculate_sha256
         run: |
           cd release
-          shasum -a 256 postgresql-${{ matrix.pg_version }}-macos.txz > SHA256SUMS.txt
+          echo "SHA256SUMS=$(shasum -a 256 ${{ steps.build_postgres.outputs.FILENAME }} | awk '{print $1}')" >> $GITHUB_OUTPUT
+
+      - name: Get date
+        id: get_date
+        run: |
+          echo "DATE=$(date +%Y%m%d)" >> $GITHUB_OUTPUT
+
+      - name: Delete Existing Release
+        if: always()
+        run: |
+          tag="v${{ matrix.pg_version }}-macos-${{ steps.build_postgres.outputs.ARCH }}-${{ steps.get_date.outputs.DATE }}"
+          release_id=$(gh release view "$tag" --json id -q '.id' 2>/dev/null || echo "")
+          if [[ -n "$release_id" ]]; then
+            gh release delete "$tag" -y
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create GitHub Release
         id: create_release
@@ -37,14 +93,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: "v${{ matrix.pg_version }}-$(date +%Y%m%d)"
-          release_name: "PostgreSQL ${{ matrix.pg_version }} with PostGIS 3.4.0 and pgRouting 3.4.2"
+          tag_name: "v${{ matrix.pg_version }}-macos-${{ steps.build_postgres.outputs.ARCH }}-${{ steps.get_date.outputs.DATE }}"
+          release_name: "${{ matrix.pg_version }}-macos-${{ steps.build_postgres.outputs.ARCH }}-${{ steps.get_date.outputs.DATE }}"
           draft: false
           prerelease: false
           body: |
             SHA256 Checksums:
             ```
-            $(cat release/SHA256SUMS.txt)
+            ${{ steps.calculate_sha256.outputs.SHA256SUMS }}
             ```
 
       - name: Upload Release Asset
@@ -53,7 +109,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: release/postgresql-${{ matrix.pg_version }}-macos.txz
-          asset_name: postgresql-${{ matrix.pg_version }}-macos.txz
+          asset_path: scripts/release/${{ steps.build_postgres.outputs.FILENAME }}
+          asset_name: ${{ steps.build_postgres.outputs.FILENAME }}
           asset_content_type: application/x-tar
-
