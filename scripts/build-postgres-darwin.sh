@@ -234,7 +234,7 @@ done
 
 # **Step 2: Create a Zip Archive for Notarization**
 cd $INSTALL_DIR
-rm -f lib/pgxs/src/test/regress/pg_regress
+rm -rf lib/pgxs/src/test/
 cp -Rf $(git rev-parse --show-toplevel)/share/postgresql/extension/* share/extension
 zip -r $TRG_DIR/postgres-macos.zip \
     share \
