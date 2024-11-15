@@ -205,15 +205,29 @@ for icu_lib in "${icu_libs[@]}"; do
     sign_binary "$INSTALL_DIR/lib/$icu_lib"
 done
 
-# Update library paths within each .dylib in the lib directory
-for dylib in $INSTALL_DIR/lib/*.dylib; do
-    install_name_tool -id "@loader_path/../lib/$(basename "$dylib")" "$dylib"
-    otool -L "$dylib" | awk '{print $1}' | grep -E '/opt/homebrew|/usr/local|@executable_path|'"$INSTALL_DIR" | while read dep; do
-        # Ensure the library is copied to the lib folder if it’s not already there
-        cp -Lf "$dep" "$INSTALL_DIR/lib/" 2>/dev/null || true
-        install_name_tool -change "$dep" "@loader_path/../lib/$(basename "$dep")" "$dylib"
-        
-        # Create version-agnostic symlinks
+# Function to recursively copy dependencies and update paths
+process_dependencies() {
+    local file_path="$1"
+
+    # Update the ID of the library to use @loader_path
+    install_name_tool -id "@loader_path/../lib/$(basename "$file_path")" "$file_path"
+
+    # Get the dependencies using otool
+    otool -L "$file_path" | awk '{print $1}' | grep -E '/opt/homebrew|/usr/local|@executable_path|'"$INSTALL_DIR" | while read dep; do
+        # If the dependency is not already in the lib directory, copy it
+        if [ ! -f "$INSTALL_DIR/lib/$(basename "$dep")" ]; then
+            cp -Lf "$dep" "$INSTALL_DIR/lib/" 2>/dev/null || true
+
+            # Recursively process the newly copied dependency
+            if [ -f "$INSTALL_DIR/lib/$(basename "$dep")" ]; then
+                process_dependencies "$INSTALL_DIR/lib/$(basename "$dep")"
+            fi
+        fi
+
+        # Update the path to use @loader_path
+        install_name_tool -change "$dep" "@loader_path/../lib/$(basename "$dep")" "$file_path"
+
+        # Create version-agnostic symlinks if necessary
         base_name=$(basename "$dep")
         symlink_name=$(echo "$base_name" | sed -E 's/([._][0-9]+)+\.dylib$/.dylib/')  # e.g., libcrypto.3.dylib -> libcrypto.dylib
 
@@ -221,6 +235,13 @@ for dylib in $INSTALL_DIR/lib/*.dylib; do
             ln -sf "$base_name" "$INSTALL_DIR/lib/$symlink_name"
         fi
     done
+}
+
+# Process all .so and .dylib files in the lib directory
+for lib_file in $INSTALL_DIR/lib/*.{so,dylib}; do
+    if [ -f "$lib_file" ]; then
+        process_dependencies "$lib_file"
+    fi
 done
 
 # Loop through all .dylib and .so files in the lib folder to sign them
@@ -235,6 +256,7 @@ done
 # **Step 2: Create a Zip Archive for Notarization**
 cd $INSTALL_DIR
 rm -rf lib/pgxs/src/test/
+rm -rf lib/Python
 cp -Rf $(git rev-parse --show-toplevel)/share/postgresql/extension/* share/extension
 zip -r $TRG_DIR/postgres-macos.zip \
     share \
