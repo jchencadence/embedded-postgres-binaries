@@ -258,6 +258,8 @@ done
 cd $INSTALL_DIR
 rm -rf lib/pgxs/src/test/
 rm -rf lib/Python
+PG_ROUTING_SO=$(ls lib/libpgrouting-* | sed -e 's|.*/||' -e 's/\.so$//')
+ln -s $PG_ROUTING_SO.so lib/$PG_ROUTING_SO.dylib
 cp -Rf $(git rev-parse --show-toplevel)/share/postgresql/extension/* share/extension
 zip -r $TRG_DIR/postgres-macos.zip \
     share \
