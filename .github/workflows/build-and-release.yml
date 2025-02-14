@@ -89,7 +89,7 @@ jobs:
             gh release delete "$tag" -y
           fi
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
 
       - name: Create GitHub Release
         id: create_release
@@ -126,3 +126,5 @@ jobs:
       - name: Build PostgreSQL, PostGIS, and Dependencies
         run: |
           ./build_and_release.sh
+        env:
+          GH_TOKEN: ${{ github.token }}
