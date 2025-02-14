@@ -38,7 +38,7 @@ mkdir -p $TRG_DIR $SRC_DIR $INSTALL_DIR
 # Install Homebrew dependencies
 brew update
 brew install python3 || true
-brew install pkg-config icu4c libxml2 libxslt openssl@3 zlib perl patchelf curl cmake pcre boost gettext
+brew install pkg-config icu4c libxml2 libxslt json-c openssl@3 zlib perl patchelf curl cmake pcre boost gettext
 
 # Dynamically set environment variables for Homebrew dependencies using brew --prefix
 export PATH="$(brew --prefix icu4c)/bin:$(brew --prefix icu4c)/sbin:$(brew --prefix python3)/bin:$(brew --prefix pcre)/bin:$(brew --prefix gettext)/bin:$PATH"
@@ -138,6 +138,7 @@ if [ -n "$POSTGIS_VERSION" ]; then
         --with-geosconfig=$INSTALL_DIR/bin/geos-config \
         --with-projdir=$INSTALL_DIR \
         --with-gdalconfig=$INSTALL_DIR/bin/gdal-config \
+        --with-jsondir="$(brew --prefix json-c)" \
         --without-protobuf
     make -j$(sysctl -n hw.ncpu)
     make install

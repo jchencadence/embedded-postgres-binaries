@@ -9,7 +9,7 @@ POSTGIS_VERSION=
 PGROUTING_VERSION=
 LITE_OPT=false
 
-while getopts "v:i:g:o:l" opt; do
+while getopts "v:i:g:r:o:l" opt; do
     case $opt in
     v) PG_VERSION=$OPTARG ;;
     i) IMG_NAME=$OPTARG ;;
