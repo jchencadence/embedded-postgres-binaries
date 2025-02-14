@@ -10,7 +10,7 @@ function do_build {
     echo "=== Building ${version} ==="
     echo
 
-    ./gradlew clean install -Pversion="${version}.0" -PpgVersion="${version}" -ParchName=amd64 -PpostgisVersion=3.4.4
+    ./gradlew clean install -Pversion="${version}.0" -PpgVersion="${version}" -ParchName=amd64 -PpostgisVersion=$POSTGIS_VERSION -PpgroutingVersion=$PGROUTING_VERSION
     cp custom-debian-platform/build/tmp/buildCustomDebianBundle/bundle/postgres-linux-debian.txz "release/postgresql-${version}-linux-amd64.txz"
 }
 

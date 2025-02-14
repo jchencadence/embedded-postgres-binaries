@@ -314,12 +314,13 @@ project(':custom-debian-platform') {
             inputs.property('archName', archName)
             inputs.property('dockerImage', dockerImage)
             inputs.property('postgisVersion', postgisVersionParam)
+            inputs.property('pgroutingVersion', pgroutingVersionParam)
 
             inputs.file("$rootDir/scripts/build-postgres-debian.sh")
             outputs.dir("$temporaryDir/bundle")
 
             workingDir temporaryDir
-            commandLine 'sh', "$rootDir/scripts/build-postgres-debian.sh", '-v', "$pgVersionParam", '-i', dockerImage, '-g', postgisVersionParam, '-o', qemuBindings
+            commandLine 'sh', "$rootDir/scripts/build-postgres-debian.sh", '-v', "$pgVersionParam", '-i', dockerImage, '-g', postgisVersionParam, '-r', pgroutingVersionParam, '-o', qemuBindings
         }
 
         task customDebianJar(group: 'build (custom)', type: Jar) {

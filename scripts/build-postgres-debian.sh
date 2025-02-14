@@ -2,7 +2,11 @@
 set -ex
 
 DOCKER_OPTS=
+PROJ_VERSION=8.2.1
+GEOS_VERSION=3.8.3
+GDAL_VERSION=3.4.3
 POSTGIS_VERSION=
+PGROUTING_VERSION=
 LITE_OPT=false
 
 while getopts "v:i:g:o:l" opt; do
@@ -10,6 +14,7 @@ while getopts "v:i:g:o:l" opt; do
     v) PG_VERSION=$OPTARG ;;
     i) IMG_NAME=$OPTARG ;;
     g) POSTGIS_VERSION=$OPTARG ;;
+    r) PGROUTING_VERSION=$OPTARG ;;
     o) DOCKER_OPTS=$OPTARG ;;
     l) LITE_OPT=true ;;
     \?) exit 1 ;;
@@ -36,10 +41,11 @@ docker run -i --rm -v ${TRG_DIR}:/usr/local/pg-dist \
 -e PG_VERSION=$PG_VERSION \
 -e POSTGIS_VERSION=$POSTGIS_VERSION \
 -e ICU_ENABLED=$ICU_ENABLED \
--e PROJ_VERSION=8.2.1 \
+-e PROJ_VERSION=$PROJ_VERSION \
 -e PROJ_DATUMGRID_VERSION=1.8 \
--e GEOS_VERSION=3.8.3 \
--e GDAL_VERSION=3.4.3 \
+-e GEOS_VERSION=$GEOS_VERSION \
+-e GDAL_VERSION=$GDAL_VERSION \
+-e PGROUTING_VERSION=$PGROUTING_VERSION \
 $DOCKER_OPTS $IMG_NAME /bin/bash -ex -c 'echo "Starting building postgres binaries" \
     && sed "s@archive.ubuntu.com@us.archive.ubuntu.com@" -i /etc/apt/sources.list \
     && ln -snf /usr/share/zoneinfo/Etc/UTC /etc/localtime && echo "Etc/UTC" > /etc/timezone \
@@ -143,7 +149,7 @@ $DOCKER_OPTS $IMG_NAME /bin/bash -ex -c 'echo "Starting building postgres binari
         && make install \
       && apt-get install -y --no-install-recommends cmake libboost-graph-dev \
         && mkdir -p /usr/src/pgrouting \
-          && curl -sL "https://github.com/pgRouting/pgrouting/archive/v3.4.1.tar.gz" | tar -xzf - -C /usr/src/pgrouting --strip-components 1 \
+          && curl -sL "https://github.com/pgRouting/pgrouting/archive/v$PGROUTING_VERSION.tar.gz" | tar -xzf - -C /usr/src/pgrouting --strip-components 1 \
           && cd /usr/src/pgrouting && mkdir build && cd build \
           && cmake -DWITH_DOC=OFF -DCMAKE_INSTALL_PREFIX=/usr/local/pg-build .. \
           && make \

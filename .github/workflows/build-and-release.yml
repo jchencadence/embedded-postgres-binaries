@@ -10,6 +10,10 @@ on:
       - release
   workflow_dispatch:
 
+env:
+  POSTGIS_VERSION: 3.4.4
+  PGROUTING_VERSION: 3.6.2
+
 jobs:
   build-and-release-macos:
     strategy:
@@ -51,7 +55,7 @@ jobs:
       - name: Build PostgreSQL, PostGIS, and Dependencies
         id: build_postgres
         run: |
-          ./build-postgres-darwin.sh -v ${{ matrix.pg_version }} -g 3.4.4 -r 3.6.2
+          ./build-postgres-darwin.sh -v ${{ matrix.pg_version }} -g $POSTGIS_VERSION -r $PGROUTING_VERSION
           if [ "${{ matrix.os }}" == "macos-15-xlarge" ]; then
             echo "ARCH=arm64" >> $GITHUB_OUTPUT
             echo "FILENAME=postgresql-${{ matrix.pg_version }}-darwin-arm64.zip" >> $GITHUB_OUTPUT
