@@ -11,6 +11,7 @@ ext {
     pgVersionParam = project.findProperty('pgVersion') ?: ("${project.version}" - '-SNAPSHOT')
     pgBinVersionParam = project.findProperty('pgBinVersion') ?: "${pgVersionParam}-1"
     postgisVersionParam = project.findProperty('postgisVersion') ?: ''
+    pgroutingVersionParam = project.findProperty('pgroutingVersion') ?: ''
     archNameParam = project.findProperty('archName') ?: ''
     distNameParam = project.findProperty('distName') ?: ''
     dockerImageParam = project.findProperty('dockerImage') ?: ''
@@ -288,7 +289,7 @@ alpineVariants.each { variant ->
 }
 
 project(':custom-debian-platform') {
-    if (!distNameParam && (archNameParam || dockerImageParam || postgisVersionParam)) {
+    if (!distNameParam && (archNameParam || dockerImageParam || postgisVersionParam || pgroutingVersionParam)) {
         def archName = archNameParam ?: 'amd64'
 
         task buildCustomDebianBundle(group: 'build (custom)', type: LazyExec, dependsOn: [validateInputs, prepareQemuExecutables]) {
