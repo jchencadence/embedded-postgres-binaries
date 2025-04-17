@@ -1,0 +1,39 @@
+name: Build Custom PostgreSQL Bundle
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build PG Bundle with Gradle + Docker
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up Java for Gradle
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Give gradlew execution permissions
+        run: chmod +x ./gradlew
+
+      - name: Run Gradle with parameters
+        run: |
+          ./gradlew clean install \
+            -Pversion=16.4.0 \
+            -PpgVersion=16.4 \
+            -ParchName=amd64 \
+            -PGVECTOR_VERSION=0.8.0
+
+      - name: Upload postgres bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: postgres-linux-debian-bundle
+          path: |
+            **/postgres-linux-debian.txz
