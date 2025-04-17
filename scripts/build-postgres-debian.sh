@@ -98,8 +98,6 @@ $DOCKER_OPTS $IMG_NAME /bin/bash -ex -c 'echo "Starting building postgres binari
     && mkdir -p /usr/src/postgresql \
     && tar -xf postgresql.tar.bz2 -C /usr/src/postgresql --strip-components 1 \
     && cd /usr/src/postgresql \
-    && wget -O config/config.guess "https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.guess;hb=b8ee5f79949d1d40e8820a774d813660e1be52d3" \
-    && wget -O config/config.sub "https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.sub;hb=b8ee5f79949d1d40e8820a774d813660e1be52d3" \
     && ./configure \
         CFLAGS="-Os -DMAP_HUGETLB=0x40000" \
         PYTHON=/usr/bin/python3 \
