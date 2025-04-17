@@ -29,16 +29,14 @@ jobs:
         run: |
           if [ "${{ matrix.os }}" == "macos-14" ]; then
             echo "ARCH=arm64" >> $GITHUB_ENV
-            echo "FILENAME=postgresql-${{ env.PG_VERSION }}-darwin-arm64.zip" >> $GITHUB_OUTPUT
           else
             echo "ARCH=amd64" >> $GITHUB_ENV
-            echo "FILENAME=postgresql-${{ env.PG_VERSION }}-darwin-amd64.zip" >> $GITHUB_OUTPUT
           fi
 
       - name: Build PostgreSQL, PostGIS, and Dependencies
         id: build_postgres
         run: |
-          scripts/build-postgres-darwin.sh -v ${{ env.PG_VERSION }} -a ${{ env.ARCH }}
+          scripts/build-postgres-darwin2.sh -v ${{ env.PG_VERSION }} -a ${{ env.ARCH }}
           echo "FILENAME=postgresql-${{ env.PG_VERSION }}-darwin-${{ env.ARCH }}.txz" >> $GITHUB_OUTPUT
 
       - name: Prepare Release Assets

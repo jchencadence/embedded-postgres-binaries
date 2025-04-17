@@ -8,17 +8,35 @@
 # the .zip file for manual upload to github releases.
 
 PG_VERSION=16.4
-PKG_CONFIG_PATH=/opt/homebrew/Cellar/icu4c@77/77.1/lib/pkgconfig/
+PGVECTOR_VERSION=0.8.0
+ARCH=
 
-ARCH=$(uname -m)
-if [ "$ARCH" == "x86_64" ]; then
-    ARCH="amd64"
-fi
+# Parse options
+while getopts "v:a:" opt; do
+    case $opt in
+    v) PG_VERSION=$OPTARG ;;
+    a) ARCH=$OPTARG ;;
+    \?) exit 1 ;;
+    esac
+done
 
-mkdir cd darwin_build
-cd darwin_build
+mkdir -p bundle
+cd bundle
 
 WORK_DIR=$(pwd)
+
+# Dynamically set environment variables for Homebrew dependencies using brew --prefix
+export PATH="$(brew --prefix icu4c)/bin:$(brew --prefix icu4c)/sbin:$(brew --prefix python3)/bin:$(brew --prefix pcre)/bin:$(brew --prefix gettext)/bin:$PATH"
+export LDFLAGS="-L$(brew --prefix icu4c)/lib -L$(brew --prefix openssl@3)/lib -L$(brew --prefix pcre)/lib -L$(brew --prefix boost)/lib -L$(brew --prefix gettext)/lib -L$INSTALL_DIR/lib"
+export CPPFLAGS="-I$(brew --prefix icu4c)/include -I$(brew --prefix openssl@3)/include -I$(brew --prefix pcre)/include -I$(brew --prefix boost)/include -I$(brew --prefix gettext)/include -I$INSTALL_DIR/include"
+export PKG_CONFIG_PATH="$(brew --prefix icu4c)/lib/pkgconfig:$(brew --prefix openssl@3)/lib/pkgconfig:$INSTALL_DIR/lib/pkgconfig"
+
+# Set Python path dynamically
+PYTHON_PATH="$(brew --prefix python3)/bin/python3"
+
+# Additional ICU-specific environment variables
+export ICU_CFLAGS="-I$(brew --prefix icu4c)/include"
+export ICU_LIBS="-L$(brew --prefix icu4c)/lib -licuuc -licudata -licui18n"
 
 # Postgres
 curl https://ftp.postgresql.org/pub/source/v${PG_VERSION}/postgresql-${PG_VERSION}.tar.bz2 -o postgresql-${PG_VERSION}.tar.bz2
@@ -27,8 +45,6 @@ PREFIX=$(pwd)/install
 cd postgresql-${PG_VERSION}
 ./configure --prefix=$PREFIX
 echo $PREFIX
-export CGO_CFLAGS="-DHAVE_STRCHRNUL -mmacosx-version-min=15.4"
-export MACOSX_DEPLOYMENT_TARGET="15.4"
 make
 make install
 cd contrib
@@ -37,7 +53,7 @@ make install
 cd ${WORK_DIR}
 
 # pgvector
-wget -O pgvector.tar.gz "https://github.com/pgvector/pgvector/archive/v0.8.0.tar.gz"
+wget -O pgvector.tar.gz "https://github.com/pgvector/pgvector/archive/v$PGVECTOR_VERSION.tar.gz"
 mkdir -p ${WORK_DIR}/pgvector
 tar -xf pgvector.tar.gz -C pgvector --strip-components 1
 cd pgvector
@@ -59,7 +75,7 @@ find $PREFIX/lib -type f -name "*.so"  | \
 cd $PREFIX
 
 # Tar it up
-tar --exclude='._*' -cJvf ./embedded-postgres-binaries-darwin-${ARCH}-${PG_VERSION}.0.txz \
+tar --exclude='._*' -cJvf $WORK_DIR/embedded-postgres-binaries-darwin-${ARCH}-${PG_VERSION}.0.txz \
   share/* \
   include/* \
   lib/libpq*.dylib \
