@@ -29,6 +29,12 @@ fi
 
 ICU_ENABLED=$(echo "$PG_VERSION" | grep -qv '^9\.' && [ "$LITE_OPT" != true ] && echo true || echo false)
 
+brew info icu4c
+
+brew --prefix icu4c
+
+ls $(brew --prefix icu4c)/lib/
+
 # Directories
 TRG_DIR=$PWD/bundle
 SRC_DIR=$PWD/src
@@ -61,7 +67,8 @@ build_with_static_linking() {
 # Function to codesign a binary
 sign_binary() {
     local binary_path="$1"
-    codesign --force --options runtime --timestamp --sign "$SIGN_IDENTITY" "$binary_path"
+#    codesign --force --options runtime --timestamp --sign "$SIGN_IDENTITY" "$binary_path"
+    echo "skipping codesign for ${binary_path}"
 }
 
 # Build proj
@@ -159,9 +166,9 @@ fi
 
 # pgvector
 wget -O pgvector.tar.gz "https://github.com/pgvector/pgvector/archive/v0.8.0.tar.gz"
-mkdir -p ${WORK_DIR}/pgvector
-tar -xf pgvector.tar.gz -C pgvector --strip-components 1
-cd pgvector
+mkdir -p $SRC_DIR/pgvector
+tar -xf pgvector.tar.gz -C $SRC_DIR/pgvector --strip-components 1
+cd $SRC_DIR/pgvector
 make USE_PGXS=1 PG_CONFIG=$INSTALL_DIR/bin/pg_config
 make USE_PGXS=1 PG_CONFIG=$INSTALL_DIR/bin/pg_config install
 
@@ -201,7 +208,7 @@ for binary in "${binaries_to_check[@]}"; do
 done
 
 # Copy ICU dependencies and update paths
-icu_libs=("libicudata.76.dylib" "libicuuc.76.dylib" "libicui18n.76.dylib")
+icu_libs=("libicudata.77.dylib" "libicuuc.77.dylib" "libicui18n.77.dylib")
 
 for icu_lib in "${icu_libs[@]}"; do
     # Copy each ICU library to the bundle's lib directory
@@ -270,17 +277,29 @@ rm -rf lib/Python
 PG_ROUTING_SO=$(ls lib/libpgrouting-* | sed -e 's|.*/||' -e 's/\.so$//')
 ln -s $PG_ROUTING_SO.so lib/$PG_ROUTING_SO.dylib
 cp -Rf $(git rev-parse --show-toplevel)/share/postgresql/extension/* share/extension
-zip -r $TRG_DIR/postgres-macos.zip \
-    share \
-    lib \
-    bin/initdb \
-    bin/pg_ctl \
-    bin/postgres \
-    bin/pg_dump \
-    bin/pg_dumpall \
-    bin/pg_restore \
-    bin/pg_isready \
-    bin/psql
+tar --exclude='._*' -cJvf $TRG_DIR/embedded-postgres-binaries-darwin-arm64-${PG_VERSION}.0.txz \
+  share \
+  lib \
+  bin/initdb \
+  bin/pg_ctl \
+  bin/postgres \
+  bin/pg_dump \
+  bin/pg_dumpall \
+  bin/pg_restore \
+  bin/pg_isready \
+  bin/psql
+
+#zip -r $TRG_DIR/postgres-macos.zip \
+#    share \
+#    lib \
+#    bin/initdb \
+#    bin/pg_ctl \
+#    bin/postgres \
+#    bin/pg_dump \
+#    bin/pg_dumpall \
+#    bin/pg_restore \
+#    bin/pg_isready \
+#    bin/psql
 
 ## Function to sign, notarize, and staple
 #notarize_and_staple() {

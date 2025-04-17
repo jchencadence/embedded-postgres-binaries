@@ -27,14 +27,14 @@ jobs:
       - name: Build PostgreSQL, PostGIS, and Dependencies
         id: build_postgres
         run: |
-          ./build-postgres-darwin.sh -v ${{ env.PG_VERSION }} -g $POSTGIS_VERSION -r $PGROUTING_VERSION -a arm64
+          ./build-postgres-darwin.sh -v ${{ env.PG_VERSION }}
           echo "ARCH=${{ env.ARCH }}" >> $GITHUB_OUTPUT
-          echo "FILENAME=postgresql-${{ env.PG_VERSION }}-darwin-arm64.zip" >> $GITHUB_OUTPUT
+          echo "FILENAME=postgresql-${{ env.PG_VERSION }}-darwin-arm64.txz" >> $GITHUB_OUTPUT
 
       - name: Prepare Release Assets
         run: |
           mkdir -p release
-          cp bundle/postgres-macos.zip "release/${{ steps.build_postgres.outputs.FILENAME }}"
+          cp bundle/embedded-postgres-binaries-darwin-arm64-${{ env.PG_VERSION }}.0.txz "release/${{ steps.build_postgres.outputs.FILENAME }}"
 
       - name: Ensure release asset exists
         run: |
