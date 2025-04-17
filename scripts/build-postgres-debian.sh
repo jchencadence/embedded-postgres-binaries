@@ -8,6 +8,7 @@ GDAL_VERSION=3.4.3
 POSTGIS_VERSION=
 PGROUTING_VERSION=
 LITE_OPT=false
+PGVECTOR_VERSION=0.8.0
 
 while getopts "v:i:g:r:e:o:l" opt; do
     case $opt in
@@ -51,7 +52,7 @@ docker run --platform=linux/amd64 -i --rm -v ${TRG_DIR}:/usr/local/pg-dist \
 -e GEOS_VERSION=$GEOS_VERSION \
 -e GDAL_VERSION=$GDAL_VERSION \
 -e PGROUTING_VERSION=$PGROUTING_VERSION \
--e PGVECTOR_VERSION=0.8.0 \
+-e PGVECTOR_VERSION=$PGVECTOR_VERSION \
 $DOCKER_OPTS $IMG_NAME /bin/bash -ex -c 'echo "Starting building postgres binaries" \
     && sed "s@archive.ubuntu.com@us.archive.ubuntu.com@" -i /etc/apt/sources.list \
     && sed -i "/bionic-backports/d" /etc/apt/sources.list \
