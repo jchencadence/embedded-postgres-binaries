@@ -7,7 +7,6 @@ GEOS_VERSION=3.8.3
 GDAL_VERSION=3.4.3
 POSTGIS_VERSION=
 PGROUTING_VERSION=
-PGVECTOR_VERSION=
 LITE_OPT=false
 
 while getopts "v:i:g:r:e:o:l" opt; do
@@ -16,7 +15,6 @@ while getopts "v:i:g:r:e:o:l" opt; do
     i) IMG_NAME=$OPTARG ;;
     g) POSTGIS_VERSION=$OPTARG ;;
     r) PGROUTING_VERSION=$OPTARG ;;
-    e) PGVECTOR_VERSION=$OPTARG ;;
     o) DOCKER_OPTS=$OPTARG ;;
     l) LITE_OPT=true ;;
     \?) exit 1 ;;
@@ -38,8 +36,13 @@ ICU_ENABLED=$(echo "$PG_VERSION" | grep -qv '^9\.' && [ "$LITE_OPT" != true ] &&
 TRG_DIR=$PWD/bundle
 mkdir -p $TRG_DIR
 
+SCRIPTS_DIR="$PWD/scripts"
+echo "current path"
+echo $PWD
+
 docker run --platform=linux/amd64 -i --rm -v ${TRG_DIR}:/usr/local/pg-dist \
 -v $PWD/../../../../share:/tmp/share \
+-v $PWD/../../../../scripts:/scripts \
 -e PG_VERSION=$PG_VERSION \
 -e POSTGIS_VERSION=$POSTGIS_VERSION \
 -e ICU_ENABLED=$ICU_ENABLED \
@@ -81,9 +84,12 @@ $DOCKER_OPTS $IMG_NAME /bin/bash -ex -c 'echo "Starting building postgres binari
     && wget -O patchelf.tar.gz "https://nixos.org/releases/patchelf/patchelf-0.9/patchelf-0.9.tar.gz" \
     && mkdir -p /usr/src/patchelf \
     && tar -xf patchelf.tar.gz -C /usr/src/patchelf --strip-components 1 \
+    && ls /scripts/config \
+    && echo "look here" \
     && cd /usr/src/patchelf \
-    && wget -O config.guess "https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.guess;hb=b8ee5f79949d1d40e8820a774d813660e1be52d3" \
-    && wget -O config.sub "https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.sub;hb=b8ee5f79949d1d40e8820a774d813660e1be52d3" \
+    && mkdir -p config \
+    && cp /scripts/config/config.guess config/config.guess \
+    && cp /scripts/config/config.sub config/config.sub \
     && ./configure --prefix=/usr/local \
     && make -j$(nproc) \
     && make install \
@@ -165,7 +171,7 @@ $DOCKER_OPTS $IMG_NAME /bin/bash -ex -c 'echo "Starting building postgres binari
     ; fi \
     && if [ -n "$PGVECTOR_VERSION" ]; then \
       mkdir -p /usr/src/pgvector \
-        && wget -O "https://github.com/pgvector/pgvector/archive/v$PGVECTOR_VERSION.tar.gz" | tar -xzf - -C /usr/src/pgvector --strip-components 1 \
+        && wget -qO- "https://github.com/pgvector/pgvector/archive/v$PGVECTOR_VERSION.tar.gz" | tar -xzf - -C /usr/src/pgvector --strip-components 1 \
         && cd /usr/src/pgvector \
         && make USE_PGXS=1 PG_CONFIG=/usr/local/pg-build/bin/pg_config \
         && make USE_PGXS=1 PG_CONFIG=/usr/local/pg-build/bin/pg_config install \

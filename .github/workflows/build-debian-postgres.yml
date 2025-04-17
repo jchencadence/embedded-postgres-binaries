@@ -5,6 +5,13 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
+env:
+  PG_VERSION: '16.4'
+  ARCH: 'amd64'
+
 jobs:
   build:
     name: Build PG Bundle with Gradle + Docker
@@ -13,6 +20,9 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
+
+      - name: Set PG_FILE
+        run: echo "PG_FILE=postgres-${PG_VERSION}-linux-debian-${ARCH}.txz" >> $GITHUB_ENV
 
       - name: Set up Java for Gradle
         uses: actions/setup-java@v3
@@ -26,14 +36,26 @@ jobs:
       - name: Run Gradle with parameters
         run: |
           ./gradlew clean install \
-            -Pversion=16.4.0 \
-            -PpgVersion=16.4 \
-            -ParchName=amd64 \
+            -Pversion=${{ env.PG_VERSION }}.0 \
+            -PpgVersion=${{ env.PG_VERSION }} \
+            -ParchName=${{ env.ARCH }} \
             -PGVECTOR_VERSION=0.8.0
+
+      - name: Move output bundle to workspace root
+        run: |
+          find . -name "postgres-linux-debian.txz" -exec cp {} "./${{ env.PG_FILE }}" \;
+
+      - name: Ensure artifact exists
+        run: test -f "${{ env.PG_FILE }}"
 
       - name: Upload postgres bundle
         uses: actions/upload-artifact@v4
         with:
-          name: postgres-linux-debian-bundle
-          path: |
-            **/postgres-linux-debian.txz
+          name: ${{ env.PG_FILE }}
+          path: ${{ env.PG_FILE }}
+
+      - name: Upload release asset
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: ${{ env.PG_FILE }}
