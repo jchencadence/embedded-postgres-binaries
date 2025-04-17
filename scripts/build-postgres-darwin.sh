@@ -8,13 +8,16 @@ GDAL_VERSION=3.4.3
 POSTGIS_VERSION=
 PGROUTING_VERSION=
 LITE_OPT=false
+ARCH=
+PGVECTOR_VERSION=0.8.0
 
 # Parse options
-while getopts "v:g:r:l" opt; do
+while getopts "v:g:r:a:l" opt; do
     case $opt in
     v) PG_VERSION=$OPTARG ;;
     g) POSTGIS_VERSION=$OPTARG ;;
     r) PGROUTING_VERSION=$OPTARG ;;
+    a) ARCH=$OPTARG ;;
     l) LITE_OPT=true ;;
     \?) exit 1 ;;
     esac
@@ -165,12 +168,14 @@ if [ -n "$PGROUTING_VERSION" ]; then
 fi
 
 # pgvector
-wget -O pgvector.tar.gz "https://github.com/pgvector/pgvector/archive/v0.8.0.tar.gz"
-mkdir -p $SRC_DIR/pgvector
-tar -xf pgvector.tar.gz -C $SRC_DIR/pgvector --strip-components 1
-cd $SRC_DIR/pgvector
-make USE_PGXS=1 PG_CONFIG=$INSTALL_DIR/bin/pg_config
-make USE_PGXS=1 PG_CONFIG=$INSTALL_DIR/bin/pg_config install
+if [ -n "$PGVECTOR_VERSION" ]; then
+    wget -O pgvector.tar.gz "https://github.com/pgvector/pgvector/archive/v$PGVECTOR_VERSION.tar.gz"
+    mkdir -p $SRC_DIR/pgvector
+    tar -xf pgvector.tar.gz -C $SRC_DIR/pgvector --strip-components 1
+    cd $SRC_DIR/pgvector
+    make USE_PGXS=1 PG_CONFIG=$INSTALL_DIR/bin/pg_config
+    make USE_PGXS=1 PG_CONFIG=$INSTALL_DIR/bin/pg_config install
+fi
 
 # Define the specific binaries to check
 binaries_to_check=(
@@ -270,14 +275,14 @@ for lib_file in $INSTALL_DIR/lib/*.{dylib,so}; do
     fi
 done
 
-# **Step 2: Create a Zip Archive for Notarization**
+# **Step 2: Create a tar**
 cd $INSTALL_DIR
 rm -rf lib/pgxs/src/test/
 rm -rf lib/Python
 PG_ROUTING_SO=$(ls lib/libpgrouting-* | sed -e 's|.*/||' -e 's/\.so$//')
 ln -s $PG_ROUTING_SO.so lib/$PG_ROUTING_SO.dylib
 cp -Rf $(git rev-parse --show-toplevel)/share/postgresql/extension/* share/extension
-tar --exclude='._*' -cJvf $TRG_DIR/embedded-postgres-binaries-darwin-arm64-${PG_VERSION}.0.txz \
+tar --exclude='._*' -cJvf $TRG_DIR/embedded-postgres-binaries-darwin-${ARCH}-${PG_VERSION}.0.txz \
   share \
   lib \
   bin/initdb \
