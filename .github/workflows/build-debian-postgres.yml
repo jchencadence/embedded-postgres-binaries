@@ -3,6 +3,8 @@ name: Build Custom PostgreSQL Bundle
 on:
   push:
     branches: [main]
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 permissions:
