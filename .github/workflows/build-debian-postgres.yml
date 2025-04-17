@@ -1,4 +1,4 @@
-name: Build Custom PostgreSQL Bundle
+name: Build Custom PostgreSQL debian amd64 Bundle
 
 on:
   push:
