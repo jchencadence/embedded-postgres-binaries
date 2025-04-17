@@ -12,21 +12,31 @@ permissions:
 
 env:
   PG_VERSION: '16.4'
-  ARCH: 'arm64'
 
 jobs:
   build:
     name: Build PG Bundle
-    runs-on: macos-14
+    strategy:
+      matrix:
+        os: [macos-14, macos-13]
+    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Determine architecture
+        run: |
+          if [ "${{ matrix.os }}" == "macos-14" ]; then
+            echo "ARCH=arm64" >> $GITHUB_ENV
+          else
+            echo "ARCH=amd64" >> $GITHUB_ENV
+          fi
+
       - name: Build PostgreSQL, PostGIS, and Dependencies
         id: build_postgres
         run: |
-          scripts/build-postgres-darwin.sh -v ${{ env.PG_VERSION }} -a ${{ env.ARCH }}
+          scripts/build-postgres-darwin2.sh -v ${{ env.PG_VERSION }} -a ${{ env.ARCH }}
           echo "FILENAME=postgresql-${{ env.PG_VERSION }}-darwin-${{ env.ARCH }}.txz" >> $GITHUB_OUTPUT
 
       - name: Prepare Release Assets
